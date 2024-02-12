@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link
+            rel="stylesheet"
+            href="{{url_for('static', filename='overview.css')}}"
+        />
+        <title>Overview</title>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.min.js"></script>
+    </head>
+    <body>
+        <h1>Übersicht</h1>
+
+        <ul id="main-overview-container">
+            <li>
+                <ul class="main-overview" id="aktueller-verbrauch">
+                    <li>Aktueller Verbrauch:</li>
+                    <li id="entry-aktueller-verbrauch" class="entry"></li>
+                </ul>
+            </li>
+            <li>
+                <ul class="main-overview" id="aktuelle-produktion">
+                    <li>Aktuelle Produktion:</li>
+                    <li id="entry-aktuelle-produktion" class="entry"></li>
+                </ul>
+            </li>
+            <li>
+                <ul class="main-overview" id="batterieladung">
+                    <li>Batterieladung:</li>
+                    <li id="entry-batterieladung" class="entry"></li>
+                </ul>
+            </li>
+            <li>
+                <ul class="main-overview">
+                    <li>Netzbezug:</li>
+                    <li id="entry-netzbezug" class="entry"></li>
+                </ul>
+            </li>
+            <li>
+                <ul class="main-overview">
+                    <li>Netzeinspeisung:</li>
+                    <li id="entry-netzeinspeisung" class="entry"></li>
+                </ul>
+            </li>
+        </ul>
+
+        <script src="{{url_for('static', filename='overview.js')}}"></script>
+    </body>
+</html>
