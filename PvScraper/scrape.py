@@ -3,11 +3,11 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support import expected_conditions as EC
-#from bs4 import BeautifulSoup
 import time
 from datetime import datetime
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.chrome.service import Service
+import platform
 
 class Scraper():
     def __init__(self, host_IP:str, driver_path:str="/usr/bin/chromedriver") -> None: 
@@ -17,11 +17,20 @@ class Scraper():
         self.netzbezug_values = []
         self.data = None
         
-        service = Service()
+        if platform.system() == "Linux":
+            service = Service(driver_path)
+        else:
+            service = Service()
+            
+
         options = webdriver.ChromeOptions()
+        options.add_experimental_option("excludeSwitches", ['enable-logging'])
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--headless")
+        options.add_argument("--log-level=1")
+        #options.add_argument('--disable-gpu') #geändert
+        
 
         self.driver = webdriver.Chrome(service=service, options=options)
 
@@ -49,36 +58,37 @@ class Scraper():
 
 
     # Now you can use BeautifulSoup to parse the page source
-    def get_data(self, params:list):
+    def get_data(self):
         while True:
             if self.website_initialized == False:
                 raise Exception("Website not initialized. Please call get_onto_website() first.")
 
             wait = WebDriverWait(self.driver, 10)
+            time.sleep(0.5)
             spans = wait.until(EC.presence_of_all_elements_located((By.XPATH, "//span[@data-v-1a879c9b='']")))
 
-            data = [span.text for span in spans]
+            data1 = [span.text for span in spans]
             
-            data = [span.text for span in spans]
-
+            button = self.driver.find_element(By.XPATH, "//*[text()='Battery Information']")
+            button.click()
+            
+            wait = WebDriverWait(self.driver, 10)
+            time.sleep(0.5)
+            spans = wait.until(EC.presence_of_all_elements_located((By.XPATH, "//span[@data-v-1a879c9b='']")))
+            
+            data2 = [span.text for span in spans]
+            
+            data = data1 + data2
+            
+            
             formatted_data = [(data[i], data[i+1]) for i in range(0, len(data), 2)]
 
-            remove_list = [('', 'Setup-Assistent'), ('Deutsch', ''), ('Standard-Benutzer', ''), ('', 'WiNet-S'), ('', ''), ('', ''), ('', ''), ('Alle anzeigen', 'Stringwechselrichter'), ('PV-Wechselrichter für Wohngebäude', 'Wechselrichter für Energiespeicherung in Wohngebäuden'), ('Ladegerät', 'SH10RT(COM1-001)'), ('Echtzeitwerte', 'Batterieinformationen'), ('DC-Informationen', 'Geräteinformation'), ('Dauer Netzbetrieb', '-- h'), ('Tägliche PV-Stromerzeugung', '2.6 kWh'), ('Gesamte PV-Stromerzeugung', '9134.5 kWh'), ('Tagesproduktion', '-- kWh'), ('Ertrag gesamt', '-- kWh'), ('Gerätestatus', 'Normal')]
-
-            filtered_data = [item for item in formatted_data if item not in remove_list]
-
-            if params == None:
-                filtered_data = [{item[0]: item[1]} for item in formatted_data if item not in remove_list]
-                filtered_data = dict(item for item in formatted_data if item not in remove_list)
-                self.data = filtered_data
+            remove_list = [('Realtime Values', 'Battery Information'), ('DC Info', 'Device Information')]
             
-            else:
-                param_data = [item for item in filtered_data if item[0] in params]
-
-                if len(param_data) == 0:
-                    raise Exception("Parameter(s) not found on website.")
-
-                param_data = [{item[0]: item[1]} for item in formatted_data if item not in remove_list]
-                param_data = dict(item for item in formatted_data if item not in remove_list)
-
-                self.data = param_data
+            filtered_data = [{item[0]: item[1]} for item in formatted_data if item not in remove_list]
+            filtered_data = dict(item for item in formatted_data if item not in remove_list)
+            self.data = filtered_data
+            
+            button = self.driver.find_element(By.XPATH, "//*[text()='Realtime Values']")
+            button.click()
+        

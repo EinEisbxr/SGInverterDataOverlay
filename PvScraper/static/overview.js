@@ -1,5 +1,14 @@
 var jsondata = null;
 
+function debounce(func, delay, ...args) {
+    let debounceTimer;
+    return function () {
+        const context = this;
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => func.apply(context, args), delay);
+    };
+}
+
 async function httpGetJson(url) {
     return fetch(url)
         .then((response) => {
@@ -21,7 +30,7 @@ function sleep(ms) {
 
 async function refreshData() {
     while (true) {
-        jsondata = await httpGetJson("http://127.0.0.1:5000/data");
+        jsondata = await httpGetJson("http://192.168.178.56:5000/data");
         console.log(jsondata);
 
         total_load_active_power = jsondata["Total Load Active Power"];
@@ -35,101 +44,194 @@ async function refreshData() {
         element_total_dc_power = document.getElementById(
             "entry-aktuelle-produktion"
         );
-        element_total_dc_power.innerHTML = total_dc_power;
+        if (element_total_dc_power != null) {
+            element_total_dc_power.innerHTML = total_dc_power;
+        }
+
+        self_consumption_rate = jsondata["Daily Self-consumption Rate"];
+        element_self_consumption_rate = document.getElementById(
+            "entry-eigenverbrauch"
+        );
+        if (element_self_consumption_rate != null) {
+            element_self_consumption_rate.innerHTML = self_consumption_rate;
+        }
 
         purchased_power = jsondata["Purchased Power"];
         element_purchased_power = document.getElementById("entry-netzbezug");
-        element_purchased_power.innerHTML = purchased_power;
+        if (element_purchased_power != null) {
+            element_purchased_power.innerHTML = purchased_power;
+        }
 
         total_exported_active_power = jsondata["Total Export Active Power"];
         element_total_exported_active_power = document.getElementById(
             "entry-netzeinspeisung"
         );
-        element_total_exported_active_power.innerHTML =
-            total_exported_active_power;
+        if (element_total_exported_active_power != null) {
+            element_total_exported_active_power.innerHTML =
+                total_exported_active_power;
+        }
 
         await sleep(1000);
     }
 }
 
-async function handleMouseOver() {
-    element_aktueller_verbrauch = document.getElementById(
-        "aktueller-verbrauch"
-    );
-    element_aktueller_verbrauch.innerHTML = "";
-    element_aktueller_verbrauch.className = "main-overview-full";
-    element_aktueller_verbrauch.innerHTML =
-        "<canvas id='current-graph'></canvas>";
+let isMouseOver = false;
 
-    await document
-        .getElementById("aktueller-verbrauch")
-        .removeEventListener("mouseover", handleMouseOver);
+async function handleMouseOver(caller_id, parameter) {
+    if (!isMouseOver) {
+        element_caller = document.getElementById(caller_id);
+        element_caller.innerHTML = "";
+        element_caller.className = "main-overview-full";
+        element_caller.innerHTML = "<canvas id='current-graph'></canvas>";
 
-    await drawCurrentGraph("Total Load Active Power");
+        document
+            .getElementById(caller_id)
+            .removeEventListener("mouseover", debounce(handleMouseOver, 100));
+
+        document
+            .getElementById(caller_id)
+            .addEventListener("mouseout", debounce(handleMouseOut, 100));
+
+        console.log("handlemouseover");
+
+        isMouseOver = true;
+
+        await drawCurrentGraph(parameter);
+    }
 }
 
-function handleMouseOut() {
-    element_aktueller_verbrauch = document.getElementById(
-        "aktueller-verbrauch"
-    );
-    element_aktueller_verbrauch.innerHTML = "";
-    element_aktueller_verbrauch.className = "main-overview";
-    element_aktueller_verbrauch.innerHTML =
-        '<li>Aktueller Verbrauch:</li><li id="entry-aktueller-verbrauch" class="entry"></li>';
+function handleMouseOut(caller_id) {
+    if (isMouseOver) {
+        element_caller = document.getElementById(caller_id);
+        element_caller.innerHTML = "";
+        element_caller.className = "main-overview";
+        element_caller.innerHTML = `<li>${caller_id
+            .replace(/-/g, " ")
+            .replace(/\b\w/g, (c) =>
+                c.toUpperCase()
+            )}:</li><li id="entry-${caller_id}" class="entry"></li>`;
 
-    document
-        .getElementById("aktueller-verbrauch")
-        .removeEventListener("mouseout", handleMouseOut);
+        document
+            .getElementById(caller_id)
+            .removeEventListener("mouseout", debounce(handleMouseOut, 100));
 
-    document.addEventListener("mouseover", handleMouseOver);
+        document
+            .getElementById(caller_id)
+            .addEventListener("mouseover", debounce(handleMouseOver, 100));
+
+        console.log("handleMouseOut");
+
+        isMouseOver = false;
+    }
 }
 
 async function drawCurrentGraph(parameter) {
-    var ctx = document.getElementById("current-graph").getContext("2d");
-    var myChart = new Chart(ctx, {
-        type: "line",
-        data: {
-            labels: [],
-            datasets: [
-                {
-                    label: "Data",
-                    data: [],
-                    backgroundColor: "rgba(0, 123, 255, 0.5)",
-                    borderColor: "rgba(0, 123, 255, 1)",
-                    borderWidth: 1,
-                },
-            ],
-        },
-        options: {
-            scales: {
-                yAxes: [
+    if (document.getElementById("current-graph")) {
+        var ctx = document.getElementById("current-graph").getContext("2d");
+        var myChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [
                     {
-                        ticks: {
-                            beginAtZero: true,
-                        },
+                        label: "Data",
+                        data: [],
+                        backgroundColor: "rgba(0, 123, 255, 0.5)",
+                        borderColor: "rgba(0, 123, 255, 1)",
+                        borderWidth: 1,
+                        pointStyle: "none",
+                        pointRadius: 0,
                     },
                 ],
             },
-        },
-    });
+            options: {
+                scales: {
+                    yAxes: [
+                        {
+                            ticks: {
+                                beginAtZero: true,
+                            },
+                        },
+                    ],
+                },
+            },
+        });
 
-    all_data = await httpGetJson("http://127.0.0.1:5000/all_data");
+        let all_data = await httpGetJson("http://192.168.178.56:5000/all_data");
 
-    for (let i = 0; i < all_data.length; i++) {
-        myChart.data.labels.push(new Date().toLocaleTimeString()); // Use the current time as the label
-        myChart.data.datasets[0].data.push(
-            all_data[i]["Total Load Active Power"].replace(" kW", "")
-        ); // Add the new data to the dataset
+        for (let i = 0; i < all_data.length; i++) {
+            myChart.data.labels.push(all_data[i]["Timestamp"]); // Use the current time as the label
+            myChart.data.datasets[0].data.push(all_data[i][parameter]); // Add the new data to the dataset
+        }
+        myChart.update(); // Update the chart
     }
-    myChart.update(); // Update the chart
 }
+
+//aktueller-verbrauch
+document
+    .getElementById("aktueller-verbrauch")
+    .addEventListener(
+        "mouseover",
+        debounce(
+            handleMouseOver,
+            100,
+            "aktueller-verbrauch",
+            "Total Load Active Power"
+        )
+    );
 
 document
     .getElementById("aktueller-verbrauch")
-    .addEventListener("mouseover", handleMouseOver);
+    .addEventListener(
+        "mouseout",
+        debounce(handleMouseOut, 100, "aktueller-verbrauch")
+    );
 
-/*document
-    .getElementById("aktueller-verbrauch")
-    .addEventListener("mouseout", handleMouseOut);*/
+//aktuelle-produktion
+document
+    .getElementById("aktuelle-produktion")
+    .addEventListener(
+        "mouseover",
+        debounce(handleMouseOver, 100, "aktuelle-produktion", "Total DC Power")
+    );
+
+document
+    .getElementById("aktuelle-produktion")
+    .addEventListener(
+        "mouseout",
+        debounce(handleMouseOut, 100, "aktuelle-produktion")
+    );
+
+//aktuelle-produktion
+document
+    .getElementById("netzbezug")
+    .addEventListener(
+        "mouseover",
+        debounce(handleMouseOver, 100, "netzbezug", "Purchased Power")
+    );
+
+document
+    .getElementById("netzbezug")
+    .addEventListener("mouseout", debounce(handleMouseOut, 100, "netzbezug"));
+
+//netzeinspeisung
+document
+    .getElementById("netzeinspeisung")
+    .addEventListener(
+        "mouseover",
+        debounce(
+            handleMouseOver,
+            100,
+            "netzeinspeisung",
+            "Total Export Active Power"
+        )
+    );
+
+document
+    .getElementById("netzeinspeisung")
+    .addEventListener(
+        "mouseout",
+        debounce(handleMouseOut, 100, "netzeinspeisung")
+    );
 
 refreshData();

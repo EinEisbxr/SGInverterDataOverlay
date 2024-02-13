@@ -56,8 +56,10 @@ h1 {
     align-items: center;
     flex-direction: column;
     border-radius: 10px;
-    padding: 2vw 2vw 2vw 2vw;
     transition: 1s;
+    padding: 0;
+    width: 110%;
+    height: 110%;
 }
 
 .entry {

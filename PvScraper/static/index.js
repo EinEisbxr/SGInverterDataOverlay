@@ -27,7 +27,7 @@ var myChart = new Chart(ctx, {
 });
 
 setInterval(function () {
-    $.get("http://127.0.0.1:5000/data", function (data) {
+    $.get("http://192.168.178.56:5000/data", function (data) {
         // Find the array that contains "Total Load Active Power"
         var totalLoadActivePowerArray = data.find(function (item) {
             return item[0] === "Total Load Active Power";
