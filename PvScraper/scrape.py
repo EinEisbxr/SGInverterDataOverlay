@@ -27,9 +27,9 @@ class Scraper():
         options.add_experimental_option("excludeSwitches", ['enable-logging'])
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--headless")
+        #options.add_argument("--headless")
         options.add_argument("--log-level=1")
-        #options.add_argument('--disable-gpu') #geändert
+        options.add_argument("--lang=en")
         
 
         self.driver = webdriver.Chrome(service=service, options=options)
@@ -63,25 +63,24 @@ class Scraper():
             if self.website_initialized == False:
                 raise Exception("Website not initialized. Please call get_onto_website() first.")
 
-            wait = WebDriverWait(self.driver, 10)
             time.sleep(0.5)
-            spans = wait.until(EC.presence_of_all_elements_located((By.XPATH, "//span[@data-v-1a879c9b='']")))
+            spans1 = self.driver.find_elements(By.XPATH, "//span[@data-v-1a879c9b='']")
 
-            data1 = [span.text for span in spans]
+            data1 = [span.text for span in spans1]
             
             button = self.driver.find_element(By.XPATH, "//*[text()='Battery Information']")
             button.click()
             
-            wait = WebDriverWait(self.driver, 10)
             time.sleep(0.5)
-            spans = wait.until(EC.presence_of_all_elements_located((By.XPATH, "//span[@data-v-1a879c9b='']")))
+            spans2 = self.driver.find_elements(By.XPATH, "//span[@data-v-1a879c9b='']")
             
-            data2 = [span.text for span in spans]
+            data2 = [span.text for span in spans2]
             
             data = data1 + data2
             
+            print(data)
             
-            formatted_data = [(data[i], data[i+1]) for i in range(0, len(data), 2)]
+            formatted_data = [(data[i], data[i+1]) for i in range(0, len(data) - 1, 2)]
 
             remove_list = [('Realtime Values', 'Battery Information'), ('DC Info', 'Device Information')]
             

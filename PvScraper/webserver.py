@@ -65,35 +65,58 @@ class WebServer:
         
     
     def collect_data(self):
+        global currentdata
+        
+        # Init variables
         total_dc_power, total_load_active_power, total_export_active_power, purchased_power = 0, 0, 0, 0 
         
+        # Connect to database
         conn, cur = dataBase.connect_database(self.database_path)
         
-        global currentdata
+        # Start the scraper in a new thread
         t1 = threading.Thread(target=self.scraper.get_data)
         t1.start()
         
+        # Wait for the scraper to get data
         while str(self.scraper.data) == "{'Realtime Values': 'Battery Information', 'DC Info': 'Device Information'}" or self.scraper.data == None or self.scraper.data == {}:
             time.sleep(0.4)
 
         
         count = 0
         while True:
-            if count >= 2:
+            if count >= 5:
                 try:
+                    count = 0
+                    
+                    # Inverter Data
                     total_load_active_power = float(str(self.scraper.data["Total Load Active Power"]).replace(" kW", ""))
                     total_dc_power = float(str(self.scraper.data["Total DC Power"]).replace(" kW", ""))
+                    device_status = str(self.scraper.data["Device Status"])
                     purchased_power = float(str(self.scraper.data["Purchased Power"]).replace(" kW", ""))
                     total_export_active_power = float(str(self.scraper.data["Total Export Active Power"]).replace(" kW", ""))
-                            
-                    count = 0
+                    internal_air_temperature = float(str(self.scraper.data["Internal Air Temperature"]).replace("℃", "").replace("'", ""))
+                    
+                    # Battery Data
+                    battery_discharging_power = float(str(self.scraper.data["Battery Discharging Power"]).replace(" kW", ""))
+                    battery_charging_power = float(str(self.scraper.data["Battery Charging Power"]).replace(" kW", ""))
+                    battery_temperature = float(str(self.scraper.data["Battery Temperature"]).replace("℃", "").replace("'", ""))
+                    battery_level = float(str(self.scraper.data["Battery Level"]).replace(" %", ""))
+                    battery_health = float(str(self.scraper.data["Battery Health"]).replace(" %", ""))
+                    
+                    # Timestamp
                     current_timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-                    dataBase.insert_data(conn, cur, "data_24h", """total_load_active_power, total_dc_power, 
-                                        purchased_power, total_export_active_power, timestamp""",
-                                        (total_load_active_power, total_dc_power, purchased_power, 
-                                        total_export_active_power, current_timestamp))
-                except:
-                    print(self.scraper.data)
+                    
+                    # Insert data into database
+                    dataBase.insert_data(conn, cur, "data_24h", """total_load_active_power, total_dc_power, device_status,
+                                         purchased_power, total_export_active_power, internal_air_temperature,
+                                         battery_discharging_power, battery_charging_power, battery_temperature,
+                                         battery_level, battery_health, timestamp""",
+                                            (total_load_active_power, total_dc_power, device_status, purchased_power,
+                                            total_export_active_power, internal_air_temperature, battery_discharging_power,
+                                            battery_charging_power, battery_temperature, battery_level, battery_health, current_timestamp))
+                    
+                except Exception as e:
+                    print(e)
                     time.sleep(1)
 
                 
